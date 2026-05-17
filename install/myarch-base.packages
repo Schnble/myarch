@@ -16,7 +16,6 @@ btop
 chromium
 clang
 claude-code
-cliamp
 cups
 cups-browsed
 cups-filters
@@ -75,7 +74,6 @@ libyaml
 libqalculate
 libreoffice-fresh
 llvm
-localsend
 luarocks
 mako
 man-db
@@ -129,7 +127,6 @@ tobi-try
 ttf-ia-writer
 ttf-jetbrains-mono-nerd
 typora
-tzupdate
 ufw
 ufw-docker
 unzip

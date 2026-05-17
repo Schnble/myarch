@@ -4,6 +4,7 @@
 export MYARCH_ONLINE_INSTALL=true
 
 clear
+echo -e "\n\e[32mMyarch\e[0m\n"
 
 # Use custom branch if instructed, otherwise default to master
 MYARCH_REF="${MYARCH_REF:-master}"
