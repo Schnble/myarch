@@ -1,3 +1,9 @@
+# Skip if Limine is not installed
+if [[ ! -f /boot/limine.conf ]] && ! command -v limine &>/dev/null; then
+  echo "Limine not found, skipping"
+  return 0
+fi
+
 if command -v limine &>/dev/null; then
   sudo tee /etc/mkinitcpio.conf.d/myarch_hooks.conf <<EOF >/dev/null
 HOOKS=(base udev plymouth keyboard autodetect microcode modconf kms keymap consolefont block encrypt filesystems fsck btrfs-overlayfs)
