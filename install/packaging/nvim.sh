@@ -1,2 +1,2 @@
 # Includes lazyvim and the themes
-myarch-nvim-setup
+omarchy-nvim-setup
