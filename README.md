@@ -1,8 +1,6 @@
 # Myarch
 
-Myarch is a beautiful, modern & opinionated Linux distribution by DHH.
-
-Read more at [myarch.org](https://myarch.org).
+Myarch 
 
 ## License
 
