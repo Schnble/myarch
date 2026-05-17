@@ -5,8 +5,23 @@
 # myarch:examples=myarch pkg add jq ripgrep
 # myarch:requires-sudo=true
 
+# Install yay if missing (needed for AUR packages)
+if ! command -v yay &>/dev/null; then
+  if ! pacman -Q yay &>/dev/null; then
+    sudo pacman -S --noconfirm --needed git base-devel
+    git clone https://aur.archlinux.org/yay.git /tmp/yay-install
+    cd /tmp/yay-install
+    makepkg -si --noconfirm
+    cd -
+    rm -rf /tmp/yay-install
+  fi
+fi
+
 if myarch-pkg-missing "$@"; then
-  sudo pacman -S --noconfirm --needed "$@" || exit 1
+  # Try pacman first, fall back to yay for AUR packages
+  if ! sudo pacman -S --noconfirm --needed "$@" 2>/dev/null; then
+    yay -S --noconfirm --needed "$@" || exit 1
+  fi
 fi
 
 for pkg in "$@"; do
