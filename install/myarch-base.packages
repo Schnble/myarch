@@ -24,6 +24,7 @@ docker-buildx
 docker-compose
 dosfstools
 dotnet-runtime-9.0
+dell-xps-touchpad-haptics
 dust
 evince
 exfatprogs
@@ -88,8 +89,13 @@ nss-mdns
 nvim
 obs-studio
 obsidian
-myarch-nvim
-myarch-walker
+omarchy-chromium
+omarchy-chromium-bin
+omarchy-fish
+omarchy-nvim
+omarchy-walker
+omarchy-zsh
+omazed
 pamixer
 pinta
 playerctl
