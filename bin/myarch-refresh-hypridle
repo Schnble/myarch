@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Overwrite the user config for hypridle with the Myarch default and restart the service.
+
+myarch-refresh-config hypr/hypridle.conf
+myarch-restart-hypridle

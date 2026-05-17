@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Print the installed Myarch version
+
+cat $MYARCH_PATH/version

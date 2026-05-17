@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=List available monospace fonts
+# myarch:examples=myarch font list | myarch font set "CaskaydiaMono Nerd Font"
+
+fc-list :spacing=100 -f "%{family[0]}\n" | grep -v -i -E 'emoji|signwriting|myarch' | sort -u

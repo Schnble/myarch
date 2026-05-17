@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# myarch:summary=Set Hyprland, Hyprlock, Mako, and Walker corners to sharp or round
+# myarch:args=<sharp|round>
+# myarch:examples=myarch style corners round | myarch style corners sharp
+
+if [[ $1 != "sharp" && $1 != "round" ]]; then
+  echo "Usage: myarch-style-corners <sharp|round>"
+  exit 1
+fi
+
+myarch-style-corners-hyprland "$1"
+myarch-style-corners-hyprlock "$1"
+myarch-style-corners-mako "$1"
+myarch-style-corners-walker "$1"
+
+case $1 in
+  sharp) myarch-notification-send "Sharp corners enabled" -g 󰝣 ;;
+  round) myarch-notification-send "Round corners enabled" -g 󰘇 ;;
+esac

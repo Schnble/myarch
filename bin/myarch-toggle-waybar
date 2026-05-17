@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# myarch:summary=Toggle Waybar visibility
+# myarch:examples=myarch toggle waybar
+
+myarch-toggle waybar-off
+
+if pgrep -x waybar >/dev/null; then
+  pkill -x waybar
+else
+  uwsm-app -- waybar >/dev/null 2>&1 &
+fi

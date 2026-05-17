@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Show current monospace font
+# myarch:examples=myarch font current
+
+grep -oP 'font-family:\s*["'\'']?\K[^;"'\'']+' ~/.config/waybar/style.css | head -n1

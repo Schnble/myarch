@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# myarch:summary=Lock the computer and turn off the display
+# myarch:group=system
+# myarch:name=lock
+# myarch:examples=myarch system lock
+
+if ! pidof hyprlock >/dev/null; then
+  (
+    hyprlock
+    myarch-system-wake
+  ) &
+fi
+
+# Set keyboard layout to default (first layout)
+hyprctl switchxkblayout all 0 > /dev/null 2>&1
+
+# Ensure 1password is locked
+if pgrep -x "1password" >/dev/null; then
+  1password --lock &
+fi
+
+
+if [[ ${MYARCH_LOCK_ONLY:-false} != "true" ]]; then
+  (
+    sleep 3
+    pidof hyprlock >/dev/null || exit 0
+    myarch-brightness-keyboard off
+    myarch-brightness-display off
+  ) &
+fi

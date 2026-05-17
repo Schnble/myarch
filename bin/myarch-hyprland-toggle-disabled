@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Check if a Hyprland toggle is currently disabled (missing).
+# myarch:args=<flag-name>
+
+[[ ! -f "$HOME/.local/state/myarch/toggles/hypr/$1.lua" ]]

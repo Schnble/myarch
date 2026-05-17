@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# myarch:summary=Prompt for text input with Walker
+# myarch:group=menu
+# myarch:name=input
+# myarch:args=prompt [walker args...]
+# myarch:examples=myarch menu input Reminder|myarch-menu-input "Reminder in minutes" --width 400
+
+set -euo pipefail
+
+prompt="${1:-Input}"
+if (( $# > 0 )); then
+  shift
+fi
+
+myarch-launch-walker --dmenu --inputonly --width 295 --minheight 1 --maxheight 1 -p "$prompt…" "$@" 2>/dev/null

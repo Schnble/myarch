@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# myarch:summary=Toggle single-window square aspect ratio.
+
+case $(myarch-hyprland-toggle single-window-aspect-ratio) in
+  on) myarch-notification-send -g  "Enable single-window square aspect ratio" ;;
+  off) myarch-notification-send -g  "Disable single-window square aspect ratio" ;;
+esac

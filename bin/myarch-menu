@@ -1,0 +1,909 @@
+#!/bin/bash
+
+# myarch:summary=Launch the Myarch Menu or takes a parameter to jump straight to a submenu.
+
+# Set to true when going directly to a submenu, so we can exit directly
+BACK_TO_EXIT=false
+
+back_to() {
+  local parent_menu="$1"
+
+  if [[ $BACK_TO_EXIT == "true" ]]; then
+    exit 0
+  elif [[ -n $parent_menu ]]; then
+    "$parent_menu"
+  else
+    show_main_menu
+  fi
+}
+
+toggle_existing_menu() {
+  if pgrep -f "walker.*--dmenu" >/dev/null; then
+    walker --close >/dev/null 2>&1
+    exit 0
+  fi
+}
+
+menu() {
+  local prompt="$1"
+  local options="$2"
+  local extra="$3"
+  local preselect="$4"
+
+  read -r -a args <<<"$extra"
+
+  if [[ -n $preselect ]]; then
+    local index
+    index=$(echo -e "$options" | grep -nxF "$preselect" | cut -d: -f1)
+    if [[ -n $index ]]; then
+      args+=("-c" "$index")
+    fi
+  fi
+
+  echo -e "$options" | myarch-launch-walker --dmenu --width 295 --minheight 1 --maxheight 630 -p "$prompt…" "${args[@]}" 2>/dev/null
+}
+
+terminal() {
+  xdg-terminal-exec --app-id=org.myarch.terminal "$@"
+}
+
+present_terminal() {
+  myarch-launch-floating-terminal-with-presentation $1
+}
+
+open_in_editor() {
+  notify-send -u low "Editing config file" "$1"
+  myarch-launch-editor "$1"
+}
+
+hypr_config_file() {
+  local name="$1"
+  printf '%s/.config/hypr/%s.lua' "$HOME" "$name"
+}
+
+install() {
+  present_terminal "echo 'Installing $1...'; myarch-pkg-add $2"
+}
+
+install_and_launch() {
+  present_terminal "echo 'Installing $1...'; myarch-pkg-add $2 && setsid gtk-launch $3"
+}
+
+install_font() {
+  present_terminal "echo 'Installing $1...'; myarch-pkg-add $2 && sleep 2 && myarch-font-set '$3'"
+}
+
+install_terminal() {
+  present_terminal "myarch-install-terminal $1"
+}
+
+aur_install() {
+  present_terminal "echo 'Installing $1 from AUR...'; myarch-pkg-aur-add $2"
+}
+
+aur_install_and_launch() {
+  present_terminal "echo 'Installing $1 from AUR...'; myarch-pkg-aur-add $2 && setsid gtk-launch $3"
+}
+
+show_learn_menu() {
+  case $(menu "Learn" "  Keybindings\n  Tmux keybindings\n  Myarch\n  Hyprland\n󰣇  Arch\n  Neovim\n󱆃  Bash") in
+  *Tmux*) myarch-menu-tmux-keybindings ;;
+  *Keybindings*) myarch-menu-keybindings ;;
+  *Myarch*) myarch-launch-webapp "https://learn.omacom.io/2/the-myarch-manual" ;;
+  *Hyprland*) myarch-launch-webapp "https://wiki.hypr.land/" ;;
+  *Arch*) myarch-launch-webapp "https://wiki.archlinux.org/title/Main_page" ;;
+  *Bash*) myarch-launch-webapp "https://devhints.io/bash" ;;
+  *Neovim*) myarch-launch-webapp "https://www.lazyvim.org/keymaps" ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_trigger_menu() {
+  case $(menu "Trigger" "󰔛  Reminder\n  Capture\n󰧸  Transcode\n  Share\n󰔎  Toggle\n  Hardware") in
+  *Reminder*) show_reminder_menu ;;
+  *Capture*) show_capture_menu ;;
+  *Transcode*) myarch-transcode || back_to show_trigger_menu ;;
+  *Share*) show_share_menu ;;
+  *Toggle*) show_toggle_menu ;;
+  *Hardware*) show_hardware_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_reminder_menu() {
+  case $(menu "Reminder" "󰔛  Set one\n󰔛  Show all\n󰔛  Clear all") in
+  *Set*) show_custom_reminder_input ;;
+  *"Show all"*) myarch-reminder show ;;
+  *"Clear all"*) myarch-reminder clear ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_custom_reminder_input() {
+  local minutes
+  minutes=$(myarch-menu-input "Remind in minutes")
+
+  if [[ $minutes =~ ^[0-9]+$ ]] && ((minutes > 0)); then
+    show_reminder_message_input "$minutes"
+  elif [[ -n $minutes ]]; then
+    myarch-notification-send -g 󰔛 "Invalid reminder" "Enter the number of minutes" -u critical
+    show_custom_reminder_input
+  else
+    back_to show_reminder_menu
+  fi
+}
+
+show_reminder_message_input() {
+  local minutes="$1"
+  local message
+  message=$(myarch-menu-input "Reminder message")
+
+  if [[ -n $message ]]; then
+    myarch-reminder "$minutes" "$message"
+  else
+    myarch-reminder "$minutes"
+  fi
+}
+
+show_capture_menu() {
+  case $(menu "Capture" "  Screenshot\n  Screenrecord\n󰴑  Text Extraction\n󰃉  Color") in
+  *Screenshot*) myarch-capture-screenshot ;;
+  *Screenrecord*) show_screenrecord_menu ;;
+  *Text*) myarch-capture-text-extraction ;;
+  *Color*) pkill hyprpicker || hyprpicker -a ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+get_webcam_list() {
+  v4l2-ctl --list-devices 2>/dev/null | while IFS= read -r line; do
+    if [[ $line != $'\t'* && -n $line ]]; then
+      local name="$line"
+      IFS= read -r device || break
+      device=$(echo "$device" | tr -d '\t' | head -1)
+      [[ -n $device ]] && echo "$device  $name"
+    fi
+  done
+}
+
+show_webcam_select_menu() {
+  local devices=$(get_webcam_list)
+  local count=$(echo "$devices" | grep -c . 2>/dev/null || echo 0)
+
+  if [[ -z $devices ]] || ((count == 0)); then
+    notify-send "No webcam devices found" -u critical -t 3000
+    return 1
+  fi
+
+  if ((count == 1)); then
+    echo "$devices" | awk '{print $1}'
+  else
+    menu "Select Webcam" "$devices" | awk '{print $1}'
+  fi
+}
+
+show_screenrecord_menu() {
+  myarch-capture-screenrecording --stop-recording && exit 0
+
+  case $(menu "Screenrecord" "  With no audio\n  With desktop audio\n  With desktop + microphone audio\n  With desktop + microphone audio + webcam") in
+  *"With no audio") myarch-capture-screenrecording ;;
+  *"With desktop audio") myarch-capture-screenrecording --with-desktop-audio ;;
+  *"With desktop + microphone audio") myarch-capture-screenrecording --with-desktop-audio --with-microphone-audio ;;
+  *"With desktop + microphone audio + webcam")
+    local device=$(show_webcam_select_menu) || {
+      back_to show_capture_menu
+      return
+    }
+    myarch-capture-screenrecording --with-desktop-audio --with-microphone-audio --with-webcam --webcam-device="$device"
+    ;;
+  *) back_to show_capture_menu ;;
+  esac
+}
+
+show_share_menu() {
+  case $(menu "Share" "  Clipboard\n  File \n  Folder\n󰥦  Receive") in
+  *Receive*) uwsm-app -- localsend ;;
+  *Clipboard*) myarch-menu-share clipboard ;;
+  *File*) terminal bash -c "myarch-menu-share file" ;;
+  *Folder*) terminal bash -c "myarch-menu-share folder" ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_toggle_menu() {
+
+  case $(menu "Toggle" "$options") in
+  *Nightlight*) myarch-toggle-nightlight ;;
+  *Idle*) myarch-toggle-idle ;;
+  *Notifications*) myarch-toggle-notification-silencing ;;
+  *Bar*) myarch-toggle-waybar ;;
+  *Layout*) myarch-hyprland-workspace-layout-toggle ;;
+  *Ratio*) myarch-hyprland-window-single-square-aspect-toggle ;;
+  *Gaps*) myarch-hyprland-window-gaps-toggle ;;
+  *Scaling*) myarch-hyprland-monitor-scaling-cycle ;;
+  *"Direct Boot"*) present_terminal myarch-config-direct-boot ;;
+  *"Passwordless Sudo"*) present_terminal myarch-sudo-passwordless ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_hardware_menu() {
+  local options="󰛧  Laptop Display\n 󰍹  Mirror Display"
+
+  if myarch-hw-hybrid-gpu; then
+    options="$options\n  Hybrid GPU"
+  fi
+
+  if myarch-hw-touchpad; then
+    options="$options\n󰟸  Touchpad"
+  fi
+
+  if myarch-hw-dell-xps-haptic-touchpad && myarch-cmd-present dell-xps-touchpad-haptics; then
+    options="$options\n󰌌  Touchpad Haptics"
+  fi
+
+  if myarch-hw-touchscreen; then
+    options="$options\n󰆽  Touchscreen"
+  fi
+
+  case $(menu "Toggle" "$options") in
+  *Laptop*) myarch-hyprland-monitor-internal toggle ;;
+  *Mirror*) myarch-hyprland-monitor-internal-mirror toggle ;;
+  *Haptics*) show_hardware_touchpad_haptics_menu ;;
+  *Touchpad*) myarch-toggle-touchpad ;;
+  *Touchscreen*) myarch-toggle-touchscreen ;;
+  *"Hybrid GPU"*) present_terminal myarch-toggle-hybrid-gpu ;;
+  *) back_to show_trigger_menu ;;
+  esac
+}
+
+show_hardware_touchpad_haptics_menu() {
+  local current=$(dell-xps-touchpad-haptics get)
+  local selected=$(menu "Touchpad Haptics" "low\nmid\nhigh" "" "$current")
+
+  if [[ -n $selected ]]; then
+    dell-xps-touchpad-haptics set "$selected"
+  else
+    back_to show_hardware_menu
+  fi
+}
+
+show_style_menu() {
+
+  *Theme*) show_theme_menu ;;
+  *Unlock*) myarch-launch-walker -m menus:myarchunlocks --width 800 --minheight 400 ;;
+  *Font*) show_font_menu ;;
+  *Background*) show_background_menu ;;
+  *Corners*) show_style_corners_menu ;;
+  *Hyprland*) open_in_editor "$(hypr_config_file looknfeel)" ;;
+  *Waybar*) show_waybar_position_menu ;;
+  *About*) show_about_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_style_corners_menu() {
+  case $(myarch-menu-select "Corners" "󰝣  Sharp" "󰘇  Round") in
+  *Sharp*) myarch-style-corners sharp ;;
+  *Round*) myarch-style-corners round ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_waybar_position_menu() {
+  case $(menu "Waybar Position" "󰁝  Top\n󰁅  Bottom\n󰁍  Left\n󰁔  Right") in
+  *Top*) myarch-style-waybar-position top ;;
+  *Bottom*) myarch-style-waybar-position bottom ;;
+  *Left*) myarch-style-waybar-position left ;;
+  *Right*) myarch-style-waybar-position right ;;
+  *) show_style_menu ;;
+  esac
+}
+
+show_about_menu() {
+  case $(menu "About" "  Edit Text\n  Set From Image\n  Restore Default") in
+  *Text*) myarch-branding-about text ;;
+  *Image*) myarch-branding-about image ;;
+  *Default*) myarch-branding-about reset ;;
+  *) show_style_menu ;;
+  esac
+}
+
+
+show_theme_menu() {
+  theme=$(myarch-theme-switcher)
+  [[ -n $theme ]] && myarch-theme-set "$theme"
+}
+
+show_background_menu() {
+  background=$(myarch-theme-bg-switcher)
+  [[ -n $background ]] && myarch-theme-bg-set "$background"
+}
+
+show_font_menu() {
+  theme=$(menu "Font" "$(myarch-font-list)" "--width 350" "$(myarch-font-current)")
+  if [[ $theme == "CNCLD" || -z $theme ]]; then
+    back_to show_style_menu
+  else
+    myarch-font-set "$theme"
+  fi
+}
+
+show_setup_menu() {
+  local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󱐋  Power Profile\n  System Sleep\n󰍹  Monitors"
+  [[ -f ~/.config/hypr/bindings.lua ]] && options="$options\n  Keybindings"
+  [[ -f ~/.config/hypr/input.lua ]] && options="$options\n  Input"
+  options="$options\n  Defaults\n󰱔  DNS\n  Security\n  Config"
+
+  case $(menu "Setup" "$options") in
+  *Audio*) myarch-launch-audio ;;
+  *Wifi*) myarch-launch-wifi ;;
+  *Bluetooth*) myarch-launch-bluetooth ;;
+  *Power*) show_setup_power_menu ;;
+  *System*) show_setup_system_menu ;;
+  *Monitors*) open_in_editor "$(hypr_config_file monitors)" ;;
+  *Keybindings*) open_in_editor "$(hypr_config_file bindings)" ;;
+  *Input*) open_in_editor "$(hypr_config_file input)" ;;
+  *Defaults*) show_setup_default_menu ;;
+  *DNS*) present_terminal myarch-setup-dns ;;
+  *Security*) show_setup_security_menu ;;
+  *Config*) show_setup_config_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_setup_power_menu() {
+  profile=$(menu "Power Profile" "$(myarch-powerprofiles-list)" "" "$(powerprofilesctl get)")
+
+  if [[ $profile == "CNCLD" || -z $profile ]]; then
+    back_to show_setup_menu
+  else
+    powerprofilesctl set "$profile"
+  fi
+}
+
+show_setup_security_menu() {
+  case $(menu "Setup" "󰈷  Fingerprint\n  Fido2") in
+  *Fingerprint*) present_terminal myarch-setup-security-fingerprint ;;
+  *Fido2*) present_terminal myarch-setup-security-fido2 ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+show_setup_default_menu() {
+  case $(menu "Default" "  Browser\n  Terminal\n  Editor") in
+  *Browser*) show_setup_default_browser_menu ;;
+  *Terminal*) show_setup_default_terminal_menu ;;
+  *Editor*) show_setup_default_editor_menu ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+browser_desktop_exists() {
+  [[ -f ~/.local/share/applications/$1 || -f ~/.nix-profile/share/applications/$1 || -f /usr/share/applications/$1 ]]
+}
+
+show_setup_default_browser_menu() {
+  local options=""
+  browser_desktop_exists chromium.desktop && options="$options  Chromium"
+  browser_desktop_exists google-chrome.desktop && options="${options:+$options\n}󰊯  Chrome"
+  browser_desktop_exists brave-browser.desktop && options="${options:+$options\n}󰖟  Brave"
+  browser_desktop_exists brave-origin-beta.desktop && options="${options:+$options\n}󰖟  Brave Origin"
+  browser_desktop_exists microsoft-edge.desktop && options="${options:+$options\n}󰇩  Edge"
+  browser_desktop_exists firefox.desktop && options="${options:+$options\n}󰈹  Firefox"
+  browser_desktop_exists zen.desktop && options="${options:+$options\n}󰖟  Zen"
+
+  local current=""
+  case "$(myarch-default-browser)" in
+  chromium) current="  Chromium" ;;
+  chrome) current="󰊯  Chrome" ;;
+  brave) current="󰖟  Brave" ;;
+  brave-origin) current="󰖟  Brave Origin" ;;
+  edge) current="󰇩  Edge" ;;
+  firefox) current="󰈹  Firefox" ;;
+  zen) current="󰖟  Zen" ;;
+  esac
+
+  case $(menu "Default Browser" "$options" "" "$current") in
+  *Chromium*) myarch-default-browser chromium ;;
+  *Chrome*) myarch-default-browser chrome ;;
+  *"Brave Origin"*) myarch-default-browser brave-origin ;;
+  *Brave*) myarch-default-browser brave ;;
+  *Edge*) myarch-default-browser edge ;;
+  *Firefox*) myarch-default-browser firefox ;;
+  *Zen*) myarch-default-browser zen ;;
+  *) show_setup_default_menu ;;
+  esac
+}
+
+show_setup_default_terminal_menu() {
+  local options=""
+  myarch-cmd-present alacritty && options="$options  Alacritty"
+  myarch-cmd-present foot && options="${options:+$options\n}  Foot"
+  myarch-cmd-present ghostty && options="${options:+$options\n}  Ghostty"
+  myarch-cmd-present kitty && options="${options:+$options\n}  Kitty"
+
+  local current=""
+  case "$(myarch-default-terminal)" in
+  alacritty) current="  Alacritty" ;;
+  foot) current="  Foot" ;;
+  ghostty) current="  Ghostty" ;;
+  kitty) current="  Kitty" ;;
+  esac
+
+  case $(menu "Default Terminal" "$options" "" "$current") in
+  *Alacritty*) myarch-default-terminal alacritty ;;
+  *Foot*) myarch-default-terminal foot ;;
+  *Ghostty*) myarch-default-terminal ghostty ;;
+  *Kitty*) myarch-default-terminal kitty ;;
+  *) show_setup_default_menu ;;
+  esac
+}
+
+show_setup_default_editor_menu() {
+  local options=""
+  myarch-cmd-present nvim && options="$options  Neovim"
+  myarch-cmd-present code && options="${options:+$options\n}  VSCode"
+  myarch-cmd-present cursor && options="${options:+$options\n}  Cursor"
+  myarch-cmd-present zeditor && options="${options:+$options\n}  Zed"
+  myarch-cmd-present sublime_text && options="${options:+$options\n}  Sublime Text"
+  myarch-cmd-present helix && options="${options:+$options\n}  Helix"
+  myarch-cmd-present vim && options="${options:+$options\n}  Vim"
+  myarch-cmd-present emacs && options="${options:+$options\n}  Emacs"
+
+  local current=""
+  case "$(myarch-default-editor)" in
+  nvim) current="  Neovim" ;;
+  code) current="  VSCode" ;;
+  cursor) current="  Cursor" ;;
+  zed | zeditor) current="  Zed" ;;
+  sublime_text) current="  Sublime Text" ;;
+  helix) current="  Helix" ;;
+  vim) current="  Vim" ;;
+  emacs) current="  Emacs" ;;
+  esac
+
+  case $(menu "Default Editor" "$options" "" "$current") in
+  *Neovim*) myarch-default-editor nvim ;;
+  *VSCode*) myarch-default-editor code ;;
+  *Cursor*) myarch-default-editor cursor ;;
+  *Zed*) myarch-default-editor zed ;;
+  *Sublime*) myarch-default-editor sublime_text ;;
+  *Helix*) myarch-default-editor helix ;;
+  *Vim*) myarch-default-editor vim ;;
+  *Emacs*) myarch-default-editor emacs ;;
+  *) show_setup_default_menu ;;
+  esac
+}
+
+show_setup_config_menu() {
+  case $(menu "Setup" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n  Swayosd\n󰌧  Walker\n󰍜  Waybar\n󰞅  XCompose") in
+  *Hyprland*) open_in_editor "$(hypr_config_file hyprland)" ;;
+  *Hypridle*) open_in_editor ~/.config/hypr/hypridle.conf && myarch-restart-hypridle ;;
+  *Hyprlock*) open_in_editor ~/.config/hypr/hyprlock.conf ;;
+  *Hyprsunset*) open_in_editor ~/.config/hypr/hyprsunset.conf && myarch-restart-hyprsunset ;;
+  *Swayosd*) open_in_editor ~/.config/swayosd/config.toml && myarch-restart-swayosd ;;
+  *Walker*) open_in_editor ~/.config/walker/config.toml && myarch-restart-walker ;;
+  *Waybar*) open_in_editor ~/.config/waybar/config.jsonc && myarch-restart-waybar ;;
+  *XCompose*) open_in_editor ~/.XCompose && myarch-restart-xcompose ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+show_setup_system_menu() {
+  local options=""
+
+  if myarch-toggle-enabled suspend-off; then
+    options="$options󰒲  Enable Suspend"
+  else
+    options="$options󰒲  Disable Suspend"
+  fi
+
+  if myarch-hibernation-available; then
+    options="$options\n󰤁  Disable Hibernate"
+  else
+    options="$options\n󰤁  Enable Hibernate"
+  fi
+
+  case $(menu "System" "$options") in
+  *Suspend*) myarch-toggle-suspend ;;
+  *"Enable Hibernate"*) present_terminal myarch-hibernation-setup ;;
+  *"Disable Hibernate"*) present_terminal myarch-hibernation-remove ;;
+  *) show_setup_menu ;;
+  esac
+}
+
+show_install_menu() {
+  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n  Web App\n  TUI\n  Service\n  Style\n󰵮  Development\n  Editor\n  Terminal\n  Browser\n󱚤  AI\n  Gaming\n󰍲  Windows") in
+  *Package*) terminal myarch-pkg-install ;;
+  *AUR*) terminal myarch-pkg-aur-install ;;
+  *Web*) present_terminal myarch-webapp-install ;;
+  *TUI*) present_terminal myarch-tui-install ;;
+  *Service*) show_install_service_menu ;;
+  *Style*) show_install_style_menu ;;
+  *Development*) show_install_development_menu ;;
+  *Editor*) show_install_editor_menu ;;
+  *Terminal*) show_install_terminal_menu ;;
+  *Browser*) show_install_browser_menu ;;
+  *Gaming*) show_install_gaming_menu ;;
+  *AI*) show_install_ai_menu ;;
+  *Windows*) present_terminal "myarch-windows-vm install" ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_install_browser_menu() {
+  case $(menu "Install" "  Chrome\n  Edge\n  Brave\n  Brave Origin\n  Firefox\n󰖟  Zen") in
+  *Chrome*) present_terminal "myarch-install-browser chrome" ;;
+  *Edge*) present_terminal "myarch-install-browser edge" ;;
+  *"Brave Origin"*) present_terminal "myarch-install-browser brave-origin" ;;
+  *Brave*) present_terminal "myarch-install-browser brave" ;;
+  *Firefox*) present_terminal "myarch-install-browser firefox" ;;
+  *Zen*) present_terminal "myarch-install-browser zen" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_service_menu() {
+  case $(menu "Install" "  Dropbox\n  Tailscale\n󱇱  NordVPN [AUR]\n󰏖  ONCE\n☀  Sunshine\n󰟵  Bitwarden\n  Chromium Account") in
+  *Dropbox*) present_terminal myarch-install-dropbox ;;
+  *Tailscale*) present_terminal myarch-install-tailscale ;;
+  *NordVPN*) present_terminal myarch-install-nordvpn ;;
+  *ONCE*) present_terminal myarch-install-once ;;
+  *Sunshine*) present_terminal myarch-install-service-sunshine ;;
+  *Bitwarden*) install_and_launch "Bitwarden" "bitwarden bitwarden-cli" "bitwarden" ;;
+  *Chromium*) present_terminal myarch-install-chromium-google-account ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_editor_menu() {
+  case $(menu "Install" "  VSCode\n  Cursor\n  Zed\n  Sublime Text\n  Helix\n  Vim\n  Emacs") in
+  *VSCode*) present_terminal myarch-install-vscode ;;
+  *Cursor*) install_and_launch "Cursor" "cursor-bin" "cursor" ;;
+  *Zed*) present_terminal myarch-install-zed ;;
+  *Sublime*) install_and_launch "Sublime Text" "sublime-text-4" "sublime_text" ;;
+  *Helix*) present_terminal myarch-install-helix ;;
+  *Vim*) install "Vim" "vim" ;;
+  *Emacs*) install "Emacs" "emacs-wayland" && systemctl --user enable --now emacs.service ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_terminal_menu() {
+  case $(menu "Install" "  Alacritty\n  Foot\n  Ghostty\n  Kitty") in
+  *Alacritty*) install_terminal "alacritty" ;;
+  *Foot*) install_terminal "foot" ;;
+  *Ghostty*) install_terminal "ghostty" ;;
+  *Kitty*) install_terminal "kitty" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_ai_menu() {
+  ollama_pkg=$(
+    (myarch-cmd-present nvidia-smi && echo ollama-cuda) ||
+      (myarch-cmd-present rocminfo && echo ollama-rocm) ||
+      echo ollama
+  )
+
+  case $(menu "Install" "  Dictation\n󱚤  LM Studio\n󱚤  Ollama\n󱚤  Crush") in
+  *Dictation*) present_terminal myarch-voxtype-install ;;
+  *Studio*) install "LM Studio" "lmstudio-bin" ;;
+  *Ollama*) install "Ollama" $ollama_pkg ;;
+  *Crush*) install "Crush" "crush-bin" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_gaming_menu() {
+  case $(menu "Install" "  Steam\n󰯉  RetroArch\n󰍳  Minecraft\n󰢹  NVIDIA GeForce NOW\n  Xbox Cloud Gaming\n󰂯  Xbox Controller\n󰍹  Moonlight (GameStream)\n  Lutris (Battle.net)\n󱓟  Heroic (Epic Games)\n󰯉  RetroArch Game Launcher") in
+  *Steam*) present_terminal myarch-install-gaming-steam ;;
+  *"RetroArch Game Launcher"*) myarch-games-retro-install ;;
+  *RetroArch*) present_terminal myarch-install-gaming-retroarch ;;
+  *Minecraft*) install_and_launch "Minecraft" "minecraft-launcher" "minecraft-launcher" ;;
+  *GeForce*) present_terminal myarch-install-gaming-geforce-now ;;
+  *"Xbox Cloud"*) present_terminal myarch-install-gaming-xbox-cloud ;;
+  *Xbox*) present_terminal myarch-install-gaming-xbox-controllers ;;
+  *Lutris*) present_terminal myarch-install-gaming-lutris ;;
+  *Heroic*) present_terminal myarch-install-gaming-heroic ;;
+  *Moonlight*) present_terminal myarch-install-gaming-moonlight ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_style_menu() {
+  case $(menu "Install" "󰸌  Theme\n  Background\n  Font") in
+  *Theme*) present_terminal myarch-theme-install ;;
+  *Background*) myarch-theme-bg-install ;;
+  *Font*) show_install_font_menu ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_font_menu() {
+  case $(menu "Install" "  Cascadia Mono\n  Meslo LG Mono\n  Fira Code\n  Victor Code\n  Bitstream Vera Mono\n  Iosevka" "--width 350") in
+  *Cascadia*) install_font "Cascadia Mono" "ttf-cascadia-mono-nerd" "CaskaydiaMono Nerd Font" ;;
+  *Meslo*) install_font "Meslo LG Mono" "ttf-meslo-nerd" "MesloLGL Nerd Font" ;;
+  *Fira*) install_font "Fira Code" "ttf-firacode-nerd" "FiraCode Nerd Font" ;;
+  *Victor*) install_font "Victor Code" "ttf-victor-mono-nerd" "VictorMono Nerd Font" ;;
+  *Bitstream*) install_font "Bitstream Vera Code" "ttf-bitstream-vera-mono-nerd" "BitstromWera Nerd Font" ;;
+  *Iosevka*) install_font "Iosevka" "ttf-iosevka-nerd" "Iosevka Nerd Font Mono" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_development_menu() {
+  case $(menu "Install" "󰫏  Ruby on Rails\n  Docker DB\n  JavaScript\n  Go\n  PHP\n  Python\n  Elixir\n  Zig\n  Rust\n  Java\n  .NET\n  OCaml\n  Clojure\n  Scala") in
+  *Rails*) present_terminal "myarch-install-dev-env ruby" ;;
+  *Docker*) present_terminal myarch-install-docker-dbs ;;
+  *JavaScript*) show_install_javascript_menu ;;
+  *Go*) present_terminal "myarch-install-dev-env go" ;;
+  *PHP*) show_install_php_menu ;;
+  *Python*) present_terminal "myarch-install-dev-env python" ;;
+  *Elixir*) show_install_elixir_menu ;;
+  *Zig*) present_terminal "myarch-install-dev-env zig" ;;
+  *Rust*) present_terminal "myarch-install-dev-env rust" ;;
+  *Java*) present_terminal "myarch-install-dev-env java" ;;
+  *NET*) present_terminal "myarch-install-dev-env dotnet" ;;
+  *OCaml*) present_terminal "myarch-install-dev-env ocaml" ;;
+  *Clojure*) present_terminal "myarch-install-dev-env clojure" ;;
+  *Scala*) present_terminal "myarch-install-dev-env scala" ;;
+  *) show_install_menu ;;
+  esac
+}
+
+show_install_javascript_menu() {
+  case $(menu "Install" "  Node.js\n  Bun\n  Deno") in
+  *Node*) present_terminal "myarch-install-dev-env node" ;;
+  *Bun*) present_terminal "myarch-install-dev-env bun" ;;
+  *Deno*) present_terminal "myarch-install-dev-env deno" ;;
+  *) show_install_development_menu ;;
+  esac
+}
+
+show_install_php_menu() {
+  case $(menu "Install" "  PHP\n  Laravel\n  Symfony") in
+  *PHP*) present_terminal "myarch-install-dev-env php" ;;
+  *Laravel*) present_terminal "myarch-install-dev-env laravel" ;;
+  *Symfony*) present_terminal "myarch-install-dev-env symfony" ;;
+  *) show_install_development_menu ;;
+  esac
+}
+
+show_install_elixir_menu() {
+  case $(menu "Install" "  Elixir\n  Phoenix") in
+  *Elixir*) present_terminal "myarch-install-dev-env elixir" ;;
+  *Phoenix*) present_terminal "myarch-install-dev-env phoenix" ;;
+  *) show_install_development_menu ;;
+  esac
+}
+
+show_remove_menu() {
+  case $(menu "Remove" "󰣇  Package\n  Web App\n  TUI\n󰵮  Development\n󰸌  Theme\n  Browser\n  Dictation\n  Gaming\n󰍲  Windows\n󰏓  Preinstalls\n  Security") in
+  *Package*) terminal myarch-pkg-remove ;;
+  *Web*) present_terminal myarch-webapp-remove ;;
+  *TUI*) present_terminal myarch-tui-remove ;;
+  *Development*) show_remove_development_menu ;;
+  *Theme*) present_terminal myarch-theme-remove ;;
+  *Browser*) show_remove_browser_menu ;;
+  *Dictation*) present_terminal myarch-voxtype-remove ;;
+  *Gaming*) show_remove_gaming_menu ;;
+  *Windows*) present_terminal "myarch-windows-vm remove" ;;
+  *Preinstalls*) present_terminal myarch-remove-preinstalls ;;
+  *Security*) show_remove_security_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_remove_security_menu() {
+  case $(menu "Remove" "󰈷  Fingerprint\n  Fido2") in
+  *Fingerprint*) present_terminal myarch-remove-security-fingerprint ;;
+  *Fido2*) present_terminal myarch-remove-security-fido2 ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_browser_menu() {
+  case $(menu "Remove" "  Chrome\n  Edge\n  Brave\n  Brave Origin\n  Firefox\n  Zen") in
+  *Chrome*) present_terminal "myarch-remove-browser chrome" ;;
+  *Edge*) present_terminal "myarch-remove-browser edge" ;;
+  *"Brave Origin"*) present_terminal "myarch-remove-browser brave-origin" ;;
+  *Brave*) present_terminal "myarch-remove-browser brave" ;;
+  *Firefox*) present_terminal "myarch-remove-browser firefox" ;;
+  *Zen*) present_terminal "myarch-remove-browser zen" ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_gaming_menu() {
+  case $(menu "Remove" "  Steam\n  RetroArch\n󰍳  Minecraft\n󰢹  NVIDIA GeForce NOW\n  Xbox Cloud Gaming\n󰖺  Xbox Controller (󰂯)\n󰍹  Moonlight (GameStream)\n  Lutris (Battle.net)\n󱓟  Heroic (Epic Games)") in
+  *Steam*) present_terminal myarch-remove-gaming-steam ;;
+  *RetroArch*) present_terminal myarch-remove-gaming-retroarch ;;
+  *Minecraft*) present_terminal myarch-remove-gaming-minecraft ;;
+  *GeForce*) present_terminal myarch-remove-gaming-geforce-now ;;
+  *"Xbox Cloud"*) present_terminal myarch-remove-gaming-xbox-cloud ;;
+  *Xbox*) present_terminal myarch-remove-gaming-xbox-controllers ;;
+  *Moonlight*) present_terminal myarch-remove-gaming-moonlight ;;
+  *Lutris*) present_terminal myarch-remove-gaming-lutris ;;
+  *Heroic*) present_terminal myarch-remove-gaming-heroic ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_development_menu() {
+  case $(menu "Remove" "󰫏  Ruby on Rails\n  JavaScript\n  Go\n  PHP\n  Python\n  Elixir\n  Zig\n  Rust\n  Java\n  .NET\n  OCaml\n  Clojure\n  Scala") in
+  *Rails*) present_terminal "myarch-remove-dev-env ruby" ;;
+  *JavaScript*) show_remove_javascript_menu ;;
+  *Go*) present_terminal "myarch-remove-dev-env go" ;;
+  *PHP*) show_remove_php_menu ;;
+  *Python*) present_terminal "myarch-remove-dev-env python" ;;
+  *Elixir*) show_remove_elixir_menu ;;
+  *Zig*) present_terminal "myarch-remove-dev-env zig" ;;
+  *Rust*) present_terminal "myarch-remove-dev-env rust" ;;
+  *Java*) present_terminal "myarch-remove-dev-env java" ;;
+  *NET*) present_terminal "myarch-remove-dev-env dotnet" ;;
+  *OCaml*) present_terminal "myarch-remove-dev-env ocaml" ;;
+  *Clojure*) present_terminal "myarch-remove-dev-env clojure" ;;
+  *Scala*) present_terminal "myarch-remove-dev-env scala" ;;
+  *) show_remove_menu ;;
+  esac
+}
+
+show_remove_javascript_menu() {
+  case $(menu "Remove" "  Node.js\n  Bun\n  Deno") in
+  *Node*) present_terminal "myarch-remove-dev-env node" ;;
+  *Bun*) present_terminal "myarch-remove-dev-env bun" ;;
+  *Deno*) present_terminal "myarch-remove-dev-env deno" ;;
+  *) show_remove_development_menu ;;
+  esac
+}
+
+show_remove_php_menu() {
+  case $(menu "Remove" "  PHP\n  Laravel\n  Symfony") in
+  *PHP*) present_terminal "myarch-remove-dev-env php" ;;
+  *Laravel*) present_terminal "myarch-remove-dev-env laravel" ;;
+  *Symfony*) present_terminal "myarch-remove-dev-env symfony" ;;
+  *) show_remove_development_menu ;;
+  esac
+}
+
+show_remove_elixir_menu() {
+  case $(menu "Remove" "  Elixir\n  Phoenix") in
+  *Elixir*) present_terminal "myarch-remove-dev-env elixir" ;;
+  *Phoenix*) present_terminal "myarch-remove-dev-env phoenix" ;;
+  *) show_remove_development_menu ;;
+  esac
+}
+
+show_update_menu() {
+  case $(menu "Update" "  Myarch\n󰔫  Channel\n  Config\n󰸌  Extra Themes\n  Process\n󰇅  Hardware\n  Firmware\n  Password\n  Timezone\n  Time") in
+  *Myarch*) present_terminal myarch-update ;;
+  *Channel*) show_update_channel_menu ;;
+  *Config*) show_update_config_menu ;;
+  *Themes*) present_terminal myarch-theme-update ;;
+  *Process*) show_update_process_menu ;;
+  *Hardware*) show_update_hardware_menu ;;
+  *Firmware*) present_terminal myarch-update-firmware ;;
+  *Timezone*) present_terminal myarch-tz-select ;;
+  *Time*) present_terminal myarch-update-time ;;
+  *Password*) show_update_password_menu ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_update_channel_menu() {
+  case $(menu "Update channel" "🟢 Stable\n🟡 RC\n🟠 Edge\n🔴 Dev") in
+  *Stable*) present_terminal "myarch-channel-set stable" ;;
+  *RC*) present_terminal "myarch-channel-set rc" ;;
+  *Edge*) present_terminal "myarch-channel-set edge" ;;
+  *Dev*) present_terminal "myarch-channel-set dev" ;;
+  *) show_update_menu ;;
+  esac
+}
+show_update_process_menu() {
+  case $(menu "Restart" "  Hypridle\n  Hyprsunset\n󰎟  Mako\n  Swayosd\n󰌧  Walker\n󰍜  Waybar") in
+  *Hypridle*) myarch-restart-hypridle ;;
+  *Hyprsunset*) myarch-restart-hyprsunset ;;
+  *Mako*) myarch-restart-mako ;;
+  *Swayosd*) myarch-restart-swayosd ;;
+  *Walker*) myarch-restart-walker ;;
+  *Waybar*) myarch-restart-waybar ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_config_menu() {
+  case $(menu "Use default config" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󱣴  Plymouth\n  Swayosd\n  Tmux\n󰌧  Walker\n󰍜  Waybar") in
+  *Hyprland*) present_terminal myarch-refresh-hyprland ;;
+  *Hypridle*) present_terminal myarch-refresh-hypridle ;;
+  *Hyprlock*) present_terminal myarch-refresh-hyprlock ;;
+  *Hyprsunset*) present_terminal myarch-refresh-hyprsunset ;;
+  *Plymouth*) present_terminal myarch-refresh-plymouth ;;
+  *Swayosd*) present_terminal myarch-refresh-swayosd ;;
+  *Tmux*) present_terminal myarch-refresh-tmux ;;
+  *Walker*) present_terminal myarch-refresh-walker ;;
+  *Waybar*) present_terminal myarch-refresh-waybar ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_hardware_menu() {
+  case $(menu "Restart" "  Audio\n󱚾  Wi-Fi\n󰂯  Bluetooth\n󰟸  Trackpad") in
+  *Audio*) present_terminal myarch-restart-pipewire ;;
+  *Wi-Fi*) present_terminal myarch-restart-wifi ;;
+  *Bluetooth*) present_terminal myarch-restart-bluetooth ;;
+  *Trackpad*) present_terminal myarch-restart-trackpad ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_update_password_menu() {
+  case $(menu "Update Password" "  Drive Encryption\n  User") in
+  *Drive*) present_terminal myarch-drive-password ;;
+  *User*) present_terminal passwd ;;
+  *) show_update_menu ;;
+  esac
+}
+
+show_about() {
+  myarch-launch-about
+}
+
+show_system_menu() {
+  ! myarch-toggle-enabled suspend-off && options="$options\n󰒲  Suspend"
+  myarch-hibernation-available && options="$options\n󰤁  Hibernate"
+  options="$options\n󰍃  Logout\n󰜉  Restart\n󰐥  Shutdown"
+
+  case $(menu "System" "$options") in
+  *Lock*) myarch-system-lock ;;
+  *Suspend*) systemctl suspend ;;
+  *Hibernate*) systemctl hibernate ;;
+  *Logout*) myarch-system-logout ;;
+  *Restart*) myarch-system-reboot ;;
+  *Shutdown*) myarch-system-shutdown ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+show_main_menu() {
+  go_to_menu "$(menu "Go" "󰀻  Apps\n󰧑  Learn\n󱓞  Trigger\n  Style\n  Setup\n󰉉  Install\n󰭌  Remove\n  Update\n  About\n  System")"
+}
+
+go_to_menu() {
+  case "${1,,}" in
+  *apps*) walker -p "Launch…" ;;
+  *learn*) show_learn_menu ;;
+  *trigger*) show_trigger_menu ;;
+  *toggle*) show_toggle_menu ;;
+  *hardware*) show_hardware_menu ;;
+  *share*) show_share_menu ;;
+  *reminder-set*) show_custom_reminder_input ;;
+  *reminder*) show_reminder_menu ;;
+  *background*) show_background_menu ;;
+  *capture*) show_capture_menu ;;
+  *style*) show_style_menu ;;
+  *theme*) show_theme_menu ;;
+  *screenrecord*) show_screenrecord_menu ;;
+  *setup*) show_setup_menu ;;
+  *power*) show_setup_power_menu ;;
+  *install*) show_install_menu ;;
+  *remove*) show_remove_menu ;;
+  *update*) show_update_menu ;;
+  *about*) show_about ;;
+  *system*) show_system_menu ;;
+  esac
+}
+
+# Allow user extensions and overrides
+USER_EXTENSIONS="$HOME/.config/myarch/extensions/menu.sh"
+[[ -f $USER_EXTENSIONS ]] && source "$USER_EXTENSIONS"
+
+toggle_existing_menu
+
+if [[ -n $1 ]]; then
+  BACK_TO_EXIT=true
+  go_to_menu "$1"
+else
+  show_main_menu
+fi

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Launch the Myarch audio controls TUI (provided by wiremix).
+
+myarch-launch-or-focus-tui wiremix

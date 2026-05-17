@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Reload mako configuration (used by the Myarch theme switching).
+
+makoctl reload

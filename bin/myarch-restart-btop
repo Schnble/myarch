@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Reload btop configuration (used by the Myarch theme switching).
+
+pkill -SIGUSR2 btop

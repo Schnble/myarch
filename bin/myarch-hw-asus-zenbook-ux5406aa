@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Detect ASUS Zenbook UX5406AA series laptops on Intel Panther Lake.
+
+myarch-hw-match "ux5406aa" && myarch-hw-intel-ptl

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# myarch:summary=Reinstall the stable Myarch source directory from git
+
+set -e
+
+# Reinstall the Myarch configuration directory from the git source.
+
+git clone --depth=1 --branch master "https://github.com/Schnble/myarch.git" ~/.local/share/myarch-new >/dev/null
+mv $MYARCH_PATH ~/.local/share/myarch-old
+mv ~/.local/share/myarch-new $MYARCH_PATH

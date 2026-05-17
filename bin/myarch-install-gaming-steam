@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# myarch:summary=Install Steam and graphics drivers selected for this system
+# myarch:requires-sudo=true
+
+set -e
+
+echo "Installing Steam..."
+myarch-pkg-add steam
+myarch-install-gaming-gpu-lib32
+
+echo ""
+echo "Steam will start automatically now. This might take a while..."
+
+setsid gtk-launch steam >/dev/null 2>&1 &

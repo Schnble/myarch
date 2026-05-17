@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Restart the XCompose input method service (fcitx5) to apply new compose key settings.
+
+myarch-restart-app fcitx5 --disable notificationitem

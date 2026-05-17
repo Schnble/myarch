@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# myarch:summary=Launch a floating terminal with the Myarch presentation wrapper
+# myarch:args=<command>
+
+cmd="$*"
+exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.myarch.terminal --title=Myarch -e bash -c "myarch-show-logo; $cmd; if (( \$? != 130 )); then myarch-show-done; fi"

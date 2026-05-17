@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# myarch:summary=Set or toggle shape of Hyprland window corners
+# myarch:args=[toggle|sharp|round]
+# myarch:examples=myarch style corners hyprland toggle | myarch style corners hyprland round | myarch style corners hyprland sharp
+
+case "${1:-toggle}" in
+  round) set -- on ;;
+  sharp) set -- off ;;
+  toggle) ;;
+  *)
+    echo "Usage: myarch-style-corners-hyprland [toggle|sharp|round]"
+    exit 1
+    ;;
+esac
+
+myarch-hyprland-toggle rounded-corners "$1"

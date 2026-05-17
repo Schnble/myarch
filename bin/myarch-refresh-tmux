@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Overwrite the user tmux config with the Myarch default and reload tmux.
+
+myarch-refresh-config tmux/tmux.conf
+myarch-restart-tmux

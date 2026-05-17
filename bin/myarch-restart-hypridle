@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Restart the hypridle service (used for idle detection and auto-lock).
+
+myarch-restart-app hypridle

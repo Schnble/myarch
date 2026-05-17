@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# myarch:summary=Finish the installation of Myarch with items that can only be done after logging in.
+# myarch:requires-sudo=true
+
+set -e
+
+FIRST_RUN_MODE=~/.local/state/myarch/first-run.mode
+
+if [[ -f $FIRST_RUN_MODE ]]; then
+  rm -f "$FIRST_RUN_MODE"
+
+  bash "$MYARCH_PATH/install/first-run/battery-monitor.sh"
+  bash "$MYARCH_PATH/install/first-run/recover-internal-monitor.sh"
+  bash "$MYARCH_PATH/install/first-run/cleanup-reboot-sudoers.sh"
+  bash "$MYARCH_PATH/install/first-run/firewall.sh"
+  bash "$MYARCH_PATH/install/first-run/dns-resolver.sh"
+  bash "$MYARCH_PATH/install/first-run/gnome-theme.sh"
+  bash "$MYARCH_PATH/install/first-run/gdk-scale.sh"
+  bash "$MYARCH_PATH/install/first-run/swayosd.sh"
+  bash "$MYARCH_PATH/install/first-run/gtk-primary-paste.sh"
+  bash "$MYARCH_PATH/install/first-run/elephant.sh"
+  myarch-hook-install post-update "$MYARCH_PATH/install/first-run/install-voxtype.hook"
+  sudo rm -f /etc/sudoers.d/first-run
+
+  bash "$MYARCH_PATH/install/first-run/welcome.sh"
+  bash "$MYARCH_PATH/install/first-run/wifi.sh"
+fi

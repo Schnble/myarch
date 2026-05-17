@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# myarch:summary=Open the Myarch background switcher
+# myarch:group=theme
+# myarch:name=bg-switcher
+# myarch:aliases=myarch background
+
+MYARCH_PATH=${MYARCH_PATH:-$HOME/.local/share/myarch}
+theme_name=$(cat "$HOME/.config/myarch/current/theme.name" 2>/dev/null)
+current_background=$(readlink -f "$HOME/.config/myarch/current/background" 2>/dev/null)
+
+myarch-menu-images \
+  --selected "$current_background" \
+  "$HOME/.config/myarch/current/theme/backgrounds" \
+  "$HOME/.config/myarch/backgrounds/$theme_name"

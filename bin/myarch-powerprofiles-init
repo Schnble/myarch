@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# myarch:summary=Set the correct power profile on boot based on current AC/battery state.
+
+if myarch-battery-present && ! myarch-ac-present; then
+  myarch-powerprofiles-set battery
+else
+  myarch-powerprofiles-set ac
+fi

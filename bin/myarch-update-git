@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# myarch:summary=Pull the latest Myarch git changes
+
+set -e
+
+echo -e "\e[32mUpdate Myarch\e[0m"
+
+myarch-update-time
+
+# Suppress Hyprland config errors while git updates default config files mid-pull
+hyprctl keyword debug:suppress_errors true &>/dev/null || true
+hyprctl eval 'hl.config({ debug = { suppress_errors = true } })' &>/dev/null || true
+
+git -C $MYARCH_PATH pull --autostash
+git -C $MYARCH_PATH --no-pager diff --check || git -C $MYARCH_PATH reset --merge
+
+hyprctl reload &>/dev/null || true

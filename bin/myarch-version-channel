@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# myarch:summary=Print the active Myarch mirror and package channel
+
+if grep -q "https://stable-mirror.myarch.org/" /etc/pacman.d/mirrorlist; then
+  mirror="stable"
+elif grep -q "https://rc-mirror.myarch.org/" /etc/pacman.d/mirrorlist; then
+  mirror="rc"
+elif grep -q "https://mirror.myarch.org/" /etc/pacman.d/mirrorlist; then
+  mirror="edge"
+else
+  mirror="unknown"
+fi
+
+if grep -q "https://pkgs.myarch.org/stable/" /etc/pacman.conf; then
+  pkgs="stable"
+elif grep -q "https://pkgs.myarch.org/edge/" /etc/pacman.conf; then
+  pkgs="edge"
+elif grep -q "https://pkgs.myarch.org/rc/" /etc/pacman.conf; then
+  pkgs="rc"
+else
+  pkgs="unknown"
+fi
+
+if [[ $mirror == $pkgs ]]; then
+  echo $mirror
+else
+  echo "$mirror / $pkgs"
+fi

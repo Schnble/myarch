@@ -1,0 +1,6 @@
+[SddmGreeterTheme]
+Name=Myarch
+Description=Minimal terminal-style login theme matching the Limine bootloader aesthetic
+Author=Myarch
+Type=sddm-theme
+Version=1.0

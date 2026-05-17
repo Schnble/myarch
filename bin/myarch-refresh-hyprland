@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# myarch:summary=Overwrite all the user Hyprland Lua configs in ~/.config/hypr with the Myarch defaults.
+
+myarch-refresh-config hypr/.luarc.json
+myarch-refresh-config hypr/autostart.lua
+myarch-refresh-config hypr/bindings.lua
+myarch-refresh-config hypr/input.lua
+myarch-refresh-config hypr/looknfeel.lua
+myarch-refresh-config hypr/hyprland.lua
+myarch-refresh-config hypr/monitors.lua
+bash "$MYARCH_PATH/install/config/myarch-toggles.sh"
+bash "$MYARCH_PATH/install/config/detect-keyboard-layout.sh"

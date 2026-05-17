@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# myarch:summary=Apply the current theme keyboard color to supported keyboards
+# myarch:hidden=true
+
+myarch-theme-set-keyboard-asus-rog
+myarch-theme-set-keyboard-f16

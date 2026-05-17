@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# myarch:summary=Reload opencode configuration (used by the Myarch theme switching).
+
+if pgrep -x opencode >/dev/null; then
+  killall -SIGUSR2 opencode
+fi

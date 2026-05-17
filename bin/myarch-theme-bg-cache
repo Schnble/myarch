@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# myarch:summary=Cache background switcher thumbnails for the current theme
+
+theme_name=$(cat "$HOME/.config/myarch/current/theme.name" 2>/dev/null)
+
+myarch-menu-images \
+  --cache-only \
+  "$HOME/.config/myarch/current/theme/backgrounds" \
+  "$HOME/.config/myarch/backgrounds/$theme_name"

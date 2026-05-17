@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Print the current Myarch git branch
+
+echo $(git -C "$MYARCH_PATH" rev-parse --abbrev-ref HEAD)

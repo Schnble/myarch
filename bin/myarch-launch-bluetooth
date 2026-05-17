@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Launch the Myarch bluetooth controls TUI (provided by bluetui).
+
+rfkill unblock bluetooth
+exec myarch-launch-or-focus-tui bluetui

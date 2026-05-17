@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Show the current weather notification
+
+myarch-notification-send -g $(myarch-weather-icon) -u low "$(myarch-weather-status)"

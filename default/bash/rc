@@ -1,0 +1,6 @@
+source ~/.local/share/myarch/default/bash/envs
+source ~/.local/share/myarch/default/bash/shell
+source ~/.local/share/myarch/default/bash/aliases
+source ~/.local/share/myarch/default/bash/functions
+source ~/.local/share/myarch/default/bash/init
+[[ $- == *i* ]] && bind -f ~/.local/share/myarch/default/bash/inputrc

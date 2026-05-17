@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# myarch:summary=Apply the current theme keyboard color to ASUS ROG keyboards
+# myarch:hidden=true
+
+ASUSCTL_THEME=~/.config/myarch/current/theme/keyboard.rgb
+
+if myarch-cmd-present asusctl; then
+  asusctl aura effect static -c $(sed 's/^#//' $ASUSCTL_THEME)
+fi

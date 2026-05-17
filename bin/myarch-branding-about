@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# myarch:summary=Edit, set, or reset About branding
+# myarch:group=branding
+# myarch:name=about
+# myarch:args=<image|text|reset>
+# myarch:examples=myarch branding about image | myarch branding about text | myarch branding about reset
+
+set -euo pipefail
+
+SOURCE_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+
+case "${1:-}" in
+image)
+  image=$(myarch-menu-file "Pick png/svg from $SOURCE_DIR" "${SOURCE_DIR}" "svg png")
+  if [[ -n $image ]] && myarch-transcode-ascii "$image" ~/.config/myarch/branding/about.txt --width 54 --height 26; then
+    myarch-launch-about >/dev/null 2>&1
+  fi
+  ;;
+text)
+  myarch-launch-editor ~/.config/myarch/branding/about.txt >/dev/null 2>&1 && myarch-launch-about >/dev/null 2>&1
+  ;;
+reset)
+  cp "$MYARCH_PATH/icon.txt" ~/.config/myarch/branding/about.txt && myarch-launch-about >/dev/null 2>&1
+  ;;
+*)
+  echo "Usage: myarch-branding-about <image|text|reset>" >&2
+  exit 1
+  ;;
+esac

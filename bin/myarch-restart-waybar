@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# myarch:summary=Restart Waybar
+# myarch:examples=myarch restart waybar
+
+pkill -9 -x waybar
+setsid uwsm-app -- waybar >/dev/null 2>&1 &

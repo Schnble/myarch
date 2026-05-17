@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Launch a terminal in the active terminal's current directory
+# myarch:args=[command...]
+
+exec setsid uwsm-app -- xdg-terminal-exec --dir="$(myarch-cmd-terminal-cwd)" "$@"

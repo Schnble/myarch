@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# myarch:summary=Overwrite the user config for hyprsunset with the Myarch default and restart the service.
+
+myarch-refresh-config hypr/hyprsunset.conf
+myarch-restart-hyprsunset

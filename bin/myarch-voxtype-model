@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# myarch:summary=Open Voxtype AI model setup
+
+set -e
+
+myarch-launch-floating-terminal-with-presentation "voxtype setup model"
+myarch-restart-waybar

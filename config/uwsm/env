@@ -1,0 +1,11 @@
+# Changes require a restart to take effect.
+
+# Ensure Myarch bins are in the path
+export MYARCH_PATH=$HOME/.local/share/myarch
+export PATH=$MYARCH_PATH/bin:$PATH:$HOME/.local/bin
+
+# Set default terminal and editor
+source ~/.config/uwsm/default
+
+# Activate mise if present on the system
+myarch-cmd-present mise && eval "$(mise activate bash --shims)"

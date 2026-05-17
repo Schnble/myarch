@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# myarch:summary=Refresh the SDDM theme from default
+# myarch:requires-sudo=true
+
+sudo rm -rf /usr/share/sddm/themes/myarch
+sudo cp -r $MYARCH_PATH/default/sddm/myarch /usr/share/sddm/themes/myarch

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# myarch:summary=Overwrite the user configs for swayosd (controls on-screen feedback for changing volume/songs etc) with the Myarch defaults and restart the service.
+
+myarch-refresh-config swayosd/config.toml
+myarch-refresh-config swayosd/style.css
+myarch-restart-swayosd

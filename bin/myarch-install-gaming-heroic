@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# myarch:summary=Install Heroic Games Launcher (Epic, GOG, Amazon Prime Gaming) with graphics drivers.
+# myarch:requires-sudo=true
+
+set -e
+
+echo "Installing Heroic Games Launcher..."
+myarch-pkg-add heroic-games-launcher-bin
+myarch-install-gaming-gpu-lib32
+
+setsid gtk-launch heroic >/dev/null 2>&1 &

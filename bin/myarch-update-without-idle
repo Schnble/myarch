@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# myarch:summary=No-op now that myarch-update-perform is responsible for idle management.
+# myarch:hidden=true

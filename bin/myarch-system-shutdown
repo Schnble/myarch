@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# myarch:summary=Shut down after closing application windows
+# myarch:examples=myarch shutdown | myarch system shutdown
+# myarch:aliases=myarch shutdown
+
+myarch-state clear re*-required
+
+# Schedule the shutdown to happen after closing windows (detached from terminal)
+nohup bash -c "sleep 2 && systemctl poweroff --no-wall" >/dev/null 2>&1 &
+
+# Now close all windows
+myarch-hyprland-window-close-all
+sleep 1 # Allow apps like Chrome to shutdown correctly

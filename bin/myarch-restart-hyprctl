@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# myarch:summary=Reload hyprland configuration (used by the Myarch theme switching).
+
+hyprctl reload >/dev/null

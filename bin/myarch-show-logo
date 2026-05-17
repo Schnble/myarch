@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# myarch:summary=Display the Myarch logo in the terminal using green color.
+
+clear
+echo -e "\033[32m"
+cat <~/.local/share/myarch/logo.txt
+echo -e "\033[0m"
+echo

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# myarch:summary=Install Zed Editor and configure it with the current Myarch theme
+
+echo "Installing Zed Editor..."
+myarch-pkg-add zed omazed
+
+# Apply Myarch theme to Zed
+omazed setup
+
+setsid gtk-launch dev.zed.Zed

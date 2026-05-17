@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# myarch:summary=Launch a TUI or focus an existing terminal window for it
+# myarch:args=<command> [args...]
+
+APP_ID="org.myarch.$(basename "$1")"
+LAUNCH_COMMAND="myarch-launch-tui $@"
+
+exec myarch-launch-or-focus "$APP_ID" "$LAUNCH_COMMAND"

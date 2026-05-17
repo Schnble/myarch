@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# myarch:summary=List available themes
+# myarch:examples=myarch theme list | myarch theme set "Tokyo Night"
+
+{
+  find ~/.config/myarch/themes/ -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf '%f\n'
+  find "$MYARCH_PATH/themes/" -mindepth 1 -maxdepth 1 -type d -printf '%f\n'
+} | sort -u | while read -r name; do
+  echo "$name" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'
+done

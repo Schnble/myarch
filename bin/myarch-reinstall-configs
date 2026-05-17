@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# myarch:summary=Reset all Myarch user configs to the defaults
+# myarch:requires-sudo=true
+
+set -e
+
+# Overwrite all user configs with the Myarch defaults.
+
+if (( EUID == 0 )); then
+  echo "Error: This script should not be run as root"
+  exit 1
+fi
+
+echo "Resetting all Myarch configs"
+cp -R ~/.local/share/myarch/config/* ~/.config/
+cp ~/.local/share/myarch/default/bashrc ~/.bashrc
+echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
+
+$(bash $MYARCH_PATH/install/config/theme.sh)
+
+myarch-refresh-limine
+myarch-refresh-plymouth
+myarch-nvim-setup
