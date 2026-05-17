@@ -3,33 +3,18 @@
 # Set install mode to online since boot.sh is used for curl installations
 export MYARCH_ONLINE_INSTALL=true
 
-ansi_art='                 ▄▄▄
- ▄█████▄    ▄███████████▄    ▄███████   ▄███████   ▄███████   ▄█   █▄    ▄█   █▄
-███   ███  ███   ███   ███  ███   ███  ███   ███  ███   ███  ███   ███  ███   ███
-███   ███  ███   ███   ███  ███   ███  ███   ███  ███   █▀   ███   ███  ███   ███
-███   ███  ███   ███   ███ ▄███▄▄▄███ ▄███▄▄▄██▀  ███       ▄███▄▄▄███▄ ███▄▄▄███
-███   ███  ███   ███   ███ ▀███▀▀▀███ ▀███▀▀▀▀    ███      ▀▀███▀▀▀███  ▀▀▀▀▀▀███
-███   ███  ███   ███   ███  ███   ███ ██████████  ███   █▄   ███   ███  ▄██   ███
-███   ███  ███   ███   ███  ███   ███  ███   ███  ███   ███  ███   ███  ███   ███
- ▀█████▀    ▀█   ███   █▀   ███   █▀   ███   ███  ███████▀   ███   █▀    ▀█████▀
-                                       ███   █▀                                  '
-
 clear
-echo -e "\n$ansi_art\n"
 
 # Use custom branch if instructed, otherwise default to master
 MYARCH_REF="${MYARCH_REF:-master}"
 
-# Set mirror based on branch
+# Set mirror based on branch (using system mirrorlist)
 if [[ $MYARCH_REF == "dev" ]]; then
   export MYARCH_MIRROR=edge
-  echo 'Server = https://mirror.myarch.org/$repo/os/$arch' | sudo tee /etc/pacman.d/mirrorlist >/dev/null
 elif [[ $MYARCH_REF == "rc" ]]; then
   export MYARCH_MIRROR=rc
-  echo 'Server = https://rc-mirror.myarch.org/$repo/os/$arch' | sudo tee /etc/pacman.d/mirrorlist >/dev/null
 else
   export MYARCH_MIRROR=stable
-  echo 'Server = https://stable-mirror.myarch.org/$repo/os/$arch' | sudo tee /etc/pacman.d/mirrorlist >/dev/null
 fi
 
 sudo pacman -Syu --noconfirm --needed git
@@ -44,6 +29,10 @@ git clone "https://github.com/${MYARCH_REPO}.git" ~/.local/share/myarch >/dev/nu
 echo -e "\e[32mUsing branch: $MYARCH_REF\e[0m"
 cd ~/.local/share/myarch
 git fetch origin "${MYARCH_REF}" && git checkout "${MYARCH_REF}"
+
+# Fix permissions on all scripts
+chmod +x bin/*
+
 cd -
 
 echo -e "\nInstallation starting..."
